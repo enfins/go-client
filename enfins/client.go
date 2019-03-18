@@ -11,7 +11,7 @@ import (
 )
 
 const SCHEMA = "https"
-const HOST = "api.go-client.com"
+const HOSTNAME = "api.enfins.com"
 const VERSION = "v1"
 
 // Scheme use "http" or "https" without semicolon. Example "http" not "http://"
@@ -94,7 +94,7 @@ type APIClient struct {
 func NewAPIClient(ident string, secret string) *APIClient {
 	cfg := &Configuration{
 		SCHEMA,
-		HOST,
+		HOSTNAME,
 		ident,
 		secret,
 		VERSION,
