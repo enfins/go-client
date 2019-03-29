@@ -3,7 +3,6 @@ package enfins
 import (
 	"testing"
 	"fmt"
-	"math/rand"
 	"net/http"
 )
 
@@ -48,13 +47,15 @@ func TestAPIClient_GetBalance(t *testing.T) {
 	}
 }
 
-func TestAPIClient_PostCreateBill(t *testing.T) {
-	_, e, err := client.PostCreateBill(CreateBillPostOpts{
+func TestAPIClient_CreateBill(t *testing.T) {
+	_, e, err := client.CreateBill(CreateBillPostOpts{
 		"UAH",
 		100,
 		"Test amount",
-		fmt.Sprintf( "EXT_ORDER_RAND_%d", rand.Int()),
-		nil,
+		"test_m_id_100",//fmt.Sprintf( "EXT_ORDER_RAND_%d", rand.Int()),
+		&CreateBillOptional{
+			Testing:true,
+		},
 	})
 	if e != nil {
 		t.Errorf("error response with Message %s", e.Message)
@@ -116,8 +117,8 @@ func TestAPIClient_GetRates_Error(t *testing.T) {
 	}
 }
 
-func TestAPIClient_PostPayout_Error(t *testing.T) {
-	s,e,err := client.PostPayout(PayoutOpt{
+func TestAPIClient_Payout_Error(t *testing.T) {
+	s,e,err := client.Payout(PayoutOpt{
 		"UAH",
 		"UAH",
 		10.00,
@@ -133,14 +134,13 @@ func TestAPIClient_PostPayout_Error(t *testing.T) {
 	if err != nil {
 		t.Errorf("error executing with message '%s'", err.Error())
 	}
-	if s == false  {
-		t.Errorf("payout not accepted")
+	if s != nil {
 		t.FailNow()
 	}
 }
 
-func TestAPIClient_PostPayoutCard_Error(t *testing.T) {
-	s,e,err := client.PostPayoutCard(PayoutCardOpt{
+func TestAPIClient_PayoutCard_Error(t *testing.T) {
+	s,e,err := client.PayoutCard(PayoutCardOpt{
 		"UAH",
 		"UAH",
 		0.00,
@@ -156,8 +156,7 @@ func TestAPIClient_PostPayoutCard_Error(t *testing.T) {
 	if err != nil {
 		t.Errorf("error executing with message '%s'", err.Error())
 	}
-	if s == false  {
-		t.Errorf("payout not accepted")
+	if s != nil {
 		t.FailNow()
 	}
 }
@@ -169,7 +168,7 @@ func TestAPIClient_GetHistory(t *testing.T) {
 		"withdraw",
 		100,
 		0,
-		false,
+		true,
 	})
 	if e != nil {
 		t.Errorf("error response with Message '%s'", e.Message)
@@ -179,5 +178,88 @@ func TestAPIClient_GetHistory(t *testing.T) {
 	}
 	if s == nil {
 		t.FailNow()
+	}
+}
+
+func TestAPIClient_FindBill_ByBillId_Success(t *testing.T) {
+	bid := new(int)
+	*bid = 993
+	s,e,err := client.FindBill(nil, bid)
+	if e != nil {
+		t.Errorf("error response with Message '%s'", e.Message)
+	}
+	if err != nil {
+		t.Errorf("error executing with message '%s'", err.Error())
+	}
+	if s == nil {
+		t.FailNow()
+	}
+}
+
+func TestAPIClient_FindBill_ByBillId_PermissionDeny(t *testing.T) {
+	bid := new(int)
+	*bid = 1
+	_,e,err := client.FindBill(nil, bid)
+	if err != nil {
+		t.Errorf("error executing with message '%s'", err.Error())
+	}
+	if e != nil {
+		if e.Code != 10520 { // not found
+			t.Errorf("error response with Message '%s'", e.Message)
+		}
+	}
+}
+
+func TestAPIClient_FindBill_ByMOrderId_Success(t *testing.T) {
+	moid := new(string)
+	*moid = "test_m_id_100"
+	s,e,err := client.FindBill(moid, nil)
+	if e != nil {
+		t.Errorf("error response with Message '%s'", e.Message)
+	}
+	if err != nil {
+		t.Errorf("error executing with message '%s'", err.Error())
+	}
+	if s == nil {
+		t.FailNow()
+	}
+	if s.MOrder != "test_m_id_100" {
+		t.FailNow()
+	}
+}
+
+func TestAPIClient_FindBill_ByMOrderId_PermissionDeny(t *testing.T) {
+	moid := new(string)
+	*moid = "test_m_id"
+	_,e,err := client.FindBill(moid, nil)
+	if err != nil {
+		t.Errorf("error executing with message '%s'", err.Error())
+	}
+	if e != nil {
+		if e.Code != 10520 { // not found
+			t.Errorf("error response with Message '%s'", e.Message)
+		}
+	}
+}
+
+func TestAPIClient_FindBill_NoParams(t *testing.T) {
+	_,e,err := client.FindBill(nil, nil)
+	if err == nil {
+		t.Errorf("expected error not found")
+	}
+	if e != nil {
+		t.Errorf("not expected error response")
+	}
+}
+
+func TestAPIClient_FindOrder_Error(t *testing.T) {
+	_,e,err := client.FindOrder(1000)
+	if e != nil {
+		if e.Code != 10507 { //not found
+			t.Errorf("error response with Message '%s'", e.Message)
+		}
+	}
+	if err != nil {
+		t.Errorf("error executing with message '%s'", err.Error())
 	}
 }

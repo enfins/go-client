@@ -22,7 +22,6 @@ type Recipient struct {
 
 type History struct {
 	Operation []Operation
-	Statistic []Stats
 	Limit     int
 	Offset    int
 	Total     int

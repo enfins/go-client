@@ -2,9 +2,9 @@ package enfins
 
 import (
 	"encoding/json"
-	"go-client/enfins/model/response"
 	"errors"
 	"fmt"
+	"go-client/enfins/model/response"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -205,7 +205,7 @@ func (api *APIClient) GetRates(opt RatesOpt) (*response.Rates, *response.Error, 
 	return &br, nil, nil
 }
 
-func (api *APIClient) PostCreateBill(opt CreateBillPostOpts) (*response.Bill, *response.Error, error) {
+func (api *APIClient) CreateBill(opt CreateBillPostOpts) (*response.CreatedBill, *response.Error, error) {
 	qb, err := NewQuery("create_bill", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -245,7 +245,7 @@ func (api *APIClient) PostCreateBill(opt CreateBillPostOpts) (*response.Bill, *r
 		return nil, nil, err
 	}
 
-	br := &response.Bill{}
+	br := &response.CreatedBill{}
 	r := &response.Result{
 		Data: br,
 	}
@@ -258,11 +258,12 @@ func (api *APIClient) PostCreateBill(opt CreateBillPostOpts) (*response.Bill, *r
 }
 
 // Returns true if successfully accepted
-func (api *APIClient) PostPayout(opt PayoutOpt) (bool, *response.Error, error) {
+func (api *APIClient) Payout(opt PayoutOpt) (*response.Payout, *response.Error, error) {
 	qb, err := NewQuery("payout", api.cfg)
 	if err != nil {
-		return false, nil, err
+		return nil, nil, err
 	}
+
 	qb.AddParam("currency", opt.Currency)
 	qb.AddParam("to_curr", opt.ToCurrency)
 	qb.AddParam("amount", fmt.Sprintf("%f", opt.Amount))
@@ -270,25 +271,26 @@ func (api *APIClient) PostPayout(opt PayoutOpt) (bool, *response.Error, error) {
 	qb.AddParam("account", opt.Account)
 	res, err := api.HTTPClient.PostForm(qb.Url(), qb.params)
 	if err != nil {
-		return false, nil, err
+		return nil, nil, err
 	}
 
-	r := &response.Result{}
+	br := &response.Payout{}
+	r := &response.Result{
+		Data: br,
+	}
 	e, err := decode(r, res)
-	if err != nil {
-		return false, nil, err
+	if err == nil && e == nil {
+		return br, nil, nil
+	} else {
+		return nil, e, err
 	}
-	if e != nil {
-		return false, e, nil
-	}
-	return true, nil, nil
 }
 
 // Returns true if successfully accepted
-func (api *APIClient) PostPayoutCard(opt PayoutCardOpt) (bool, *response.Error, error) {
+func (api *APIClient) PayoutCard(opt PayoutCardOpt) (*response.Payout, *response.Error, error) {
 	qb, err := NewQuery("payout_card", api.cfg)
 	if err != nil {
-		return false, nil, err
+		return nil, nil, err
 	}
 	qb.AddParam("currency", opt.Currency)
 	qb.AddParam("to_curr", opt.ToCurrency)
@@ -297,18 +299,19 @@ func (api *APIClient) PostPayoutCard(opt PayoutCardOpt) (bool, *response.Error, 
 	qb.AddParam("card_number", opt.CardNumber)
 	res, err := api.HTTPClient.PostForm(qb.Url(), qb.params)
 	if err != nil {
-		return false, nil, err
+		return nil, nil, err
 	}
 
-	r := &response.Result{}
+	br := &response.Payout{}
+	r := &response.Result{
+		Data: br,
+	}
 	e, err := decode(r, res)
-	if err != nil {
-		return false, nil, err
+	if err == nil && e == nil {
+		return br, nil, nil
+	} else {
+		return nil, e, err
 	}
-	if e != nil {
-		return false, e, nil
-	}
-	return true, nil, nil
 }
 
 func (api *APIClient) GetHistory(opt HistoryOpt) (*response.History, *response.Error, error) {
@@ -340,6 +343,64 @@ func (api *APIClient) GetHistory(opt HistoryOpt) (*response.History, *response.E
 	}
 
 	br := &response.History{}
+	r := &response.Result{
+		Data: br,
+	}
+	e, err := decode(r, res)
+	if err != nil {
+		return nil, nil, err
+	}
+	if e != nil {
+		return nil, e, nil
+	}
+	return br, nil, nil
+}
+
+func (api *APIClient) FindBill(mOrderId *string, billId *int) (*response.Bill, *response.Error, error) {
+	qb, err := NewQuery("find/bill", api.cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	if mOrderId != nil {
+		id := *mOrderId
+		qb.AddParam("m_order", id)
+	} else if billId != nil {
+		bid := *billId
+		qb.AddParam("bill_id", strconv.Itoa(bid))
+	} else {
+		return nil, nil, errors.New("one of 'ext_id' or 'bill_id' parameters must be not nil")
+	}
+	res, err := api.HTTPClient.Get(qb.Url())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	br := &response.Bill{}
+	r := &response.Result{
+		Data: br,
+	}
+	e, err := decode(r, res)
+	if err != nil {
+		return nil, nil, err
+	}
+	if e != nil {
+		return nil, e, nil
+	}
+	return br, nil, nil
+}
+
+func (api *APIClient) FindOrder(orderId int) (*response.Order, *response.Error, error) {
+	qb, err := NewQuery("find/order", api.cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	qb.AddParam("order_id", strconv.Itoa(orderId))
+	res, err := api.HTTPClient.Get(qb.Url())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	br := &response.Order{}
 	r := &response.Result{
 		Data: br,
 	}
