@@ -38,17 +38,21 @@ func TestQueryBuilder_AddParam(t *testing.T) {
 }
 
 func TestAPIClient_GetBalance(t *testing.T) {
-	_,e,err := client.GetBalance()
+	b,e,err := client.GetBalance()
 	if e != nil {
 		t.Errorf("error response with Message '%s'", e.Message)
 	}
 	if err != nil {
 		t.Errorf("error executing with message '%s'", err.Error())
 	}
+	if len(b) < 1 {
+		t.Errorf("empty response array")
+		t.Fail()
+	}
 }
 
 func TestAPIClient_CreateBill(t *testing.T) {
-	_, e, err := client.CreateBill(CreateBillPostOpts{
+	_, e, err := client.CreateBill(&CreateBillPostOpts{
 		"UAH",
 		100,
 		"Test amount",
@@ -66,7 +70,7 @@ func TestAPIClient_CreateBill(t *testing.T) {
 }
 
 func TestAPIClient_GetStats(t *testing.T) {
-	s,e,err := client.GetStats(StatsOpt{"UAH", 0,0, "", true})
+	s,e,err := client.GetStats(&StatsOpt{"UAH", 0,0, "", true})
 	if e != nil {
 		t.Errorf("error response with Message '%s'", e.Message)
 	}
@@ -80,7 +84,7 @@ func TestAPIClient_GetStats(t *testing.T) {
 
 func TestAPIClient_GetRates_Success(t *testing.T) {
 	t.Skip("Disabled method")
-	s,e,err := client.GetRates(RatesOpt{
+	s,e,err := client.GetRates(&RatesOpt{
 		"USD",
 		"UAH",
 		100,
@@ -99,7 +103,7 @@ func TestAPIClient_GetRates_Success(t *testing.T) {
 
 func TestAPIClient_GetRates_Error(t *testing.T) {
 	t.Skip("Disabled method")
-	s,e,err := client.GetRates(RatesOpt{
+	s,e,err := client.GetRates(&RatesOpt{
 		"USD",
 		"UAH",
 		0,
@@ -118,7 +122,7 @@ func TestAPIClient_GetRates_Error(t *testing.T) {
 }
 
 func TestAPIClient_Payout_Error(t *testing.T) {
-	s,e,err := client.Payout(PayoutOpt{
+	s,e,err := client.Payout(&PayoutOpt{
 		"UAH",
 		"UAH",
 		10.00,
@@ -140,7 +144,7 @@ func TestAPIClient_Payout_Error(t *testing.T) {
 }
 
 func TestAPIClient_PayoutCard_Error(t *testing.T) {
-	s,e,err := client.PayoutCard(PayoutCardOpt{
+	s,e,err := client.PayoutCard(&PayoutCardOpt{
 		"UAH",
 		"UAH",
 		0.00,
@@ -162,7 +166,7 @@ func TestAPIClient_PayoutCard_Error(t *testing.T) {
 }
 
 func TestAPIClient_GetHistory(t *testing.T) {
-	s,e,err := client.GetHistory(HistoryOpt{
+	s,e,err := client.GetHistory(&HistoryOpt{
 		1496416572,
 		1652919375,
 		"withdraw",

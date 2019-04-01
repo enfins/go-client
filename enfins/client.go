@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const SCHEMA = "https"
@@ -87,7 +88,7 @@ type CreateBillOptional struct {
 // also you can create new with your configuration and http.Client
 type APIClient struct {
 	cfg        *Configuration
-	HTTPClient *http.Client
+	httpClient *http.Client
 }
 
 // Create new client to make simple requests
@@ -102,36 +103,41 @@ func NewAPIClient(ident string, secret string) *APIClient {
 	}
 	c := &APIClient{
 		cfg,
-		http.DefaultClient,
+		&http.Client{
+			Timeout: 15*time.Second,
+		},
 	}
 	return c
 }
+
+// Use to set HTTP client
+func (api APIClient) SetHttpClient(client *http.Client) {
+	api.httpClient = client
+}
+
 
 func (api *APIClient) GetBalance() ([]response.Balance, *response.Error, error) {
 	qb, err := NewQuery("balance", api.cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	res, err := api.HTTPClient.Get(qb.Url())
+	res, err := api.httpClient.Get(qb.Url())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var br []response.Balance
-	r := &response.Result{
-		Data: &br,
-	}
-	e, err := decode(r, res)
+	var r []response.Balance
+	e, err := decode(&r, res)
 	if err != nil {
 		return nil, nil, err
 	}
 	if e != nil {
 		return nil, e, nil
 	}
-	return br, nil, nil
+	return r, nil, nil
 }
 
-func (api *APIClient) GetStats(opt StatsOpt) (*response.Stats, *response.Error, error) {
+func (api *APIClient) GetStats(opt *StatsOpt) (*response.Stats, *response.Error, error) {
 	qb, err := NewQuery("stats", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -149,15 +155,12 @@ func (api *APIClient) GetStats(opt StatsOpt) (*response.Stats, *response.Error, 
 	if opt.ShowTesting {
 		qb.AddParam("show_testing", "true")
 	}
-	res, err := api.HTTPClient.Get(qb.Url())
+	res, err := api.httpClient.Get(qb.Url())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.Stats{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.Stats{}
 	e, err := decode(r, res)
 	if err != nil {
 		return nil, nil, err
@@ -165,12 +168,12 @@ func (api *APIClient) GetStats(opt StatsOpt) (*response.Stats, *response.Error, 
 	if e != nil {
 		return nil, e, nil
 	}
-	return br, nil, nil
+	return r, nil, nil
 }
 
 // Deprecated
 // Temporary unavailable
-func (api *APIClient) GetRates(opt RatesOpt) (*response.Rates, *response.Error, error) {
+func (api *APIClient) GetRates(opt *RatesOpt) (*response.Rates, *response.Error, error) {
 	qb, err := NewQuery("rates", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -186,15 +189,12 @@ func (api *APIClient) GetRates(opt RatesOpt) (*response.Rates, *response.Error, 
 	if opt.ReceiveAmount > 0 {
 		qb.AddParam("receive_amount", fmt.Sprintf("%f", opt.ReceiveAmount))
 	}
-	res, err := api.HTTPClient.Get(qb.Url())
+	res, err := api.httpClient.Get(qb.Url())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var br response.Rates
-	r := &response.Result{
-		Data: &br,
-	}
+	r := &response.Rates{}
 	e, err := decode(r, res)
 	if err != nil {
 		return nil, nil, err
@@ -202,10 +202,10 @@ func (api *APIClient) GetRates(opt RatesOpt) (*response.Rates, *response.Error, 
 	if e != nil {
 		return nil, e, nil
 	}
-	return &br, nil, nil
+	return r, nil, nil
 }
 
-func (api *APIClient) CreateBill(opt CreateBillPostOpts) (*response.CreatedBill, *response.Error, error) {
+func (api *APIClient) CreateBill(opt *CreateBillPostOpts) (*response.CreatedBill, *response.Error, error) {
 	qb, err := NewQuery("create_bill", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -240,25 +240,22 @@ func (api *APIClient) CreateBill(opt CreateBillPostOpts) (*response.CreatedBill,
 			qb.AddParam("testing", "true")
 		}
 	}
-	res, err := api.HTTPClient.PostForm(qb.Url(), qb.params)
+	res, err := api.httpClient.PostForm(qb.Url(), qb.params)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.CreatedBill{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.CreatedBill{}
 	e, err := decode(r, res)
 	if err == nil && e == nil {
-		return br, nil, nil
+		return r, nil, nil
 	} else {
 		return nil, e, err
 	}
 }
 
 // Returns true if successfully accepted
-func (api *APIClient) Payout(opt PayoutOpt) (*response.Payout, *response.Error, error) {
+func (api *APIClient) Payout(opt *PayoutOpt) (*response.Payout, *response.Error, error) {
 	qb, err := NewQuery("payout", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -269,25 +266,22 @@ func (api *APIClient) Payout(opt PayoutOpt) (*response.Payout, *response.Error, 
 	qb.AddParam("amount", fmt.Sprintf("%f", opt.Amount))
 	qb.AddParam("description", opt.Description)
 	qb.AddParam("account", opt.Account)
-	res, err := api.HTTPClient.PostForm(qb.Url(), qb.params)
+	res, err := api.httpClient.PostForm(qb.Url(), qb.params)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.Payout{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.Payout{}
 	e, err := decode(r, res)
 	if err == nil && e == nil {
-		return br, nil, nil
+		return r, nil, nil
 	} else {
 		return nil, e, err
 	}
 }
 
 // Returns true if successfully accepted
-func (api *APIClient) PayoutCard(opt PayoutCardOpt) (*response.Payout, *response.Error, error) {
+func (api *APIClient) PayoutCard(opt *PayoutCardOpt) (*response.Payout, *response.Error, error) {
 	qb, err := NewQuery("payout_card", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -297,24 +291,21 @@ func (api *APIClient) PayoutCard(opt PayoutCardOpt) (*response.Payout, *response
 	qb.AddParam("amount", fmt.Sprintf("%2f", opt.Amount))
 	qb.AddParam("description", opt.Description)
 	qb.AddParam("card_number", opt.CardNumber)
-	res, err := api.HTTPClient.PostForm(qb.Url(), qb.params)
+	res, err := api.httpClient.PostForm(qb.Url(), qb.params)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.Payout{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.Payout{}
 	e, err := decode(r, res)
 	if err == nil && e == nil {
-		return br, nil, nil
+		return r, nil, nil
 	} else {
 		return nil, e, err
 	}
 }
 
-func (api *APIClient) GetHistory(opt HistoryOpt) (*response.History, *response.Error, error) {
+func (api *APIClient) GetHistory(opt *HistoryOpt) (*response.History, *response.Error, error) {
 	qb, err := NewQuery("history", api.cfg)
 	if err != nil {
 		return nil, nil, err
@@ -337,15 +328,12 @@ func (api *APIClient) GetHistory(opt HistoryOpt) (*response.History, *response.E
 	if opt.ShowTesting {
 		qb.AddParam("show_testing", "true")
 	}
-	res, err := api.HTTPClient.Get(qb.Url())
+	res, err := api.httpClient.Get(qb.Url())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.History{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.History{}
 	e, err := decode(r, res)
 	if err != nil {
 		return nil, nil, err
@@ -353,7 +341,7 @@ func (api *APIClient) GetHistory(opt HistoryOpt) (*response.History, *response.E
 	if e != nil {
 		return nil, e, nil
 	}
-	return br, nil, nil
+	return r, nil, nil
 }
 
 func (api *APIClient) FindBill(mOrderId *string, billId *int) (*response.Bill, *response.Error, error) {
@@ -370,15 +358,12 @@ func (api *APIClient) FindBill(mOrderId *string, billId *int) (*response.Bill, *
 	} else {
 		return nil, nil, errors.New("one of 'ext_id' or 'bill_id' parameters must be not nil")
 	}
-	res, err := api.HTTPClient.Get(qb.Url())
+	res, err := api.httpClient.Get(qb.Url())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.Bill{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.Bill{}
 	e, err := decode(r, res)
 	if err != nil {
 		return nil, nil, err
@@ -386,7 +371,7 @@ func (api *APIClient) FindBill(mOrderId *string, billId *int) (*response.Bill, *
 	if e != nil {
 		return nil, e, nil
 	}
-	return br, nil, nil
+	return r, nil, nil
 }
 
 func (api *APIClient) FindOrder(orderId int) (*response.Order, *response.Error, error) {
@@ -395,15 +380,12 @@ func (api *APIClient) FindOrder(orderId int) (*response.Order, *response.Error, 
 		return nil, nil, err
 	}
 	qb.AddParam("order_id", strconv.Itoa(orderId))
-	res, err := api.HTTPClient.Get(qb.Url())
+	res, err := api.httpClient.Get(qb.Url())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	br := &response.Order{}
-	r := &response.Result{
-		Data: br,
-	}
+	r := &response.Order{}
 	e, err := decode(r, res)
 	if err != nil {
 		return nil, nil, err
@@ -411,12 +393,14 @@ func (api *APIClient) FindOrder(orderId int) (*response.Order, *response.Error, 
 	if e != nil {
 		return nil, e, nil
 	}
-	return br, nil, nil
+	return r, nil, nil
 }
 
-func decode(res *response.Result, r *http.Response) (fail *response.Error, err error) {
+func decode(data interface{}, r *http.Response) (fail *response.Error, err error) {
 	b, err := ioutil.ReadAll(r.Body)
-	fmt.Println(string(b))
+	res := &response.Result{
+		Data: data,
+	}
 	if err != nil {
 		return nil, err
 	}

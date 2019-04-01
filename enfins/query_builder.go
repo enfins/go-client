@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"net/url"
-	"fmt"
 )
 
 type QueryBuilder struct {
@@ -48,7 +47,6 @@ func (qb *QueryBuilder) signQuery() {
 // returns URL for request
 func (qb *QueryBuilder) Url() string {
 	qb.signQuery()
-	fmt.Println(qb.url.String())
 	return qb.url.String()
 }
 
